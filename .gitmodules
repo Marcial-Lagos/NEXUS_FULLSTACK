@@ -1,0 +1,6 @@
+[submodule "Nexus_React"]
+	path = Nexus_React
+	url = https://github.com/Marcial-Lagos/Nexus_React.git
+[submodule "Proyecto_Springboot_Microservicios"]
+	path = Proyecto_Springboot_Microservicios
+	url = https://github.com/Marcial-Lagos/Proyecto_Springboot_Microservicios.git
