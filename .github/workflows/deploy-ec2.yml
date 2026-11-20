@@ -1,0 +1,141 @@
+name: Deploy NEXUS_FULLSTACK to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexus-ec2-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy NEXUS containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
+
+    steps:
+      - name: Check out NEXUS and its two submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Nexus_React/package-lock.json
+
+      - name: Build the React frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix Nexus_React
+          VITE_API_BASE_URL=/ npm --prefix Nexus_React run build
+          mkdir -p deploy/frontend/dist
+          cp -a Nexus_React/dist/. deploy/frontend/dist/
+
+      - name: Build backend and frontend images
+        shell: bash
+        run: |
+          set -euo pipefail
+          BACKEND="Proyecto_Springboot_Microservicios/proyecto"
+          docker build --platform linux/amd64 -t nexus-eureka-server:latest "$BACKEND/eureka-server"
+          docker build --platform linux/amd64 -t nexus-api-gateway:latest "$BACKEND/api-gateway"
+          docker build --platform linux/amd64 -t nexus-ms-auth:latest "$BACKEND/ms-auth"
+          docker build --platform linux/amd64 -t nexus-ms-usuarios:latest "$BACKEND/ms-usuarios"
+          docker build --platform linux/amd64 -t nexus-ms-productos:latest "$BACKEND/ms-productos"
+          docker build --platform linux/amd64 -t nexus-ms-pedidos:latest "$BACKEND/ms-pedidos"
+          docker build --platform linux/amd64 -t nexus-ms-pagos:latest "$BACKEND/ms-pagos"
+          docker build --platform linux/amd64 -t nexus-ms-envios:latest "$BACKEND/ms-envios"
+          docker build --platform linux/amd64 -t nexus-ms-inventario:latest "$BACKEND/ms-inventario"
+          docker build --platform linux/amd64 -t nexus-ms-notificaciones:latest "$BACKEND/ms-notificaciones"
+          docker build --platform linux/amd64 -t nexus-ms-resenas:latest "$BACKEND/ms-resenas"
+          docker build --platform linux/amd64 -t nexus-ms-cupones:latest "$BACKEND/ms-cupones"
+          docker build --platform linux/amd64 -t nexus-frontend:latest deploy/frontend
+
+          docker save \\
+            nexus-eureka-server:latest \\
+            nexus-api-gateway:latest \\
+            nexus-ms-auth:latest \\
+            nexus-ms-usuarios:latest \\
+            nexus-ms-productos:latest \\
+            nexus-ms-pedidos:latest \\
+            nexus-ms-pagos:latest \\
+            nexus-ms-envios:latest \\
+            nexus-ms-inventario:latest \\
+            nexus-ms-notificaciones:latest \\
+            nexus-ms-resenas:latest \\
+            nexus-ms-cupones:latest \\
+            nexus-frontend:latest | gzip -1 > images.tar.gz
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\\n' "$EC2_SSH_KEY" | tr -d '\\r' > ~/.ssh/nexus-ec2.pem
+          chmod 600 ~/.ssh/nexus-ec2.pem
+          ssh-keyscan -T 15 -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Transfer images and Compose file
+        shell: bash
+        run: |
+          set -euo pipefail
+          REMOTE="\${EC2_USER}@\${EC2_HOST}"
+          SSH_OPTS=(-i "$HOME/.ssh/nexus-ec2.pem" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          ssh "\${SSH_OPTS[@]}" "$REMOTE" 'mkdir -p "$HOME/nexus"'
+          scp "\${SSH_OPTS[@]}" images.tar.gz deploy/compose.ec2.yaml "$REMOTE:nexus/"
+
+      - name: Start NEXUS on EC2 and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          REMOTE="\${EC2_USER}@\${EC2_HOST}"
+          SSH_OPTS=(-i "$HOME/.ssh/nexus-ec2.pem" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          ssh "\${SSH_OPTS[@]}" "$REMOTE" 'bash -se' <<'REMOTE_SCRIPT'
+          set -euo pipefail
+          cd "$HOME/nexus"
+
+          if [ ! -f .env ]; then
+            umask 077
+            printf 'MYSQL_USERNAME=root\\nMYSQL_ROOT_PASSWORD=%s\\nJWT_SECRET=%s\\n' \\
+              "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
+          fi
+
+          docker compose -f compose.ec2.yaml pull mysql
+          gzip -dc images.tar.gz | docker load
+          docker compose -f compose.ec2.yaml up -d --no-build --pull never --force-recreate
+          rm -f images.tar.gz
+
+          for i in $(seq 1 72); do
+            if curl -fsS --max-time 5 http://127.0.0.1/ >/dev/null && \\
+               curl -fsS --max-time 5 http://127.0.0.1:8080/actuator/health | \\
+                 grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"'; then
+              echo 'NEXUS is healthy.'
+              docker compose -f compose.ec2.yaml ps
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo 'Deployment did not become healthy.'
+          docker compose -f compose.ec2.yaml ps
+          docker compose -f compose.ec2.yaml logs --tail 100
+          exit 1
+          REMOTE_SCRIPT
+
+      - name: Show public URL
+        if: success()
+        run: echo "NEXUS is available at http://\${EC2_HOST}/"
