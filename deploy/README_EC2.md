@@ -10,7 +10,7 @@ En el asistente de lanzamiento:
 
 1. Crea o elige un par de claves y conserva el archivo privado `.pem` en un lugar seguro.
 2. Permite HTTP (`80/TCP`) desde Internet para abrir la web.
-3. Para el flujo SSH de GitHub Actions, habilita SSH (`22/TCP`). Los runners hospedados tienen IP cambiantes; este flujo requiere permitir SSH desde cualquier IPv4 (0.0.0.0/0). Usa una llave SSH sin contraseña y elimina la regla cuando ya no sea necesaria. Para producción, usa acceso sin SSH público, por ejemplo AWS Systems Manager.
+3. Para el flujo SSH de GitHub Actions, habilita SSH (`22/TCP`). Los runners hospedados tienen IP cambiantes; este flujo requiere permitir SSH desde cualquier IPv4 (0.0.0.0/0). Usa una llave SSH sin contraseña. Para cada despliegue, habilita esa regla temporalmente y ciérrala al terminar; el workflow no podrá conectarse mientras esté cerrada. Para producción, usa acceso sin SSH público, por ejemplo AWS Systems Manager.
 4. En **Advanced details → User data**, pega el contenido de `deploy/ec2-user-data.sh`.
 5. Deja un volumen raíz gp3 de 50 GiB. No abras los puertos 3306, 8080 ni 8761 a Internet.
 
