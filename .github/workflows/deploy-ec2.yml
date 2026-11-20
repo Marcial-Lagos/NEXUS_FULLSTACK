@@ -62,19 +62,19 @@ jobs:
           docker build --platform linux/amd64 -t nexus-ms-cupones:latest "$BACKEND/ms-cupones"
           docker build --platform linux/amd64 -t nexus-frontend:latest deploy/frontend
 
-          docker save \\
-            nexus-eureka-server:latest \\
-            nexus-api-gateway:latest \\
-            nexus-ms-auth:latest \\
-            nexus-ms-usuarios:latest \\
-            nexus-ms-productos:latest \\
-            nexus-ms-pedidos:latest \\
-            nexus-ms-pagos:latest \\
-            nexus-ms-envios:latest \\
-            nexus-ms-inventario:latest \\
-            nexus-ms-notificaciones:latest \\
-            nexus-ms-resenas:latest \\
-            nexus-ms-cupones:latest \\
+          docker save \
+            nexus-eureka-server:latest \
+            nexus-api-gateway:latest \
+            nexus-ms-auth:latest \
+            nexus-ms-usuarios:latest \
+            nexus-ms-productos:latest \
+            nexus-ms-pedidos:latest \
+            nexus-ms-pagos:latest \
+            nexus-ms-envios:latest \
+            nexus-ms-inventario:latest \
+            nexus-ms-notificaciones:latest \
+            nexus-ms-resenas:latest \
+            nexus-ms-cupones:latest \
             nexus-frontend:latest | gzip -1 > images.tar.gz
 
       - name: Configure SSH
@@ -84,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           install -d -m 700 ~/.ssh
-          printf '%s\\n' "$EC2_SSH_KEY" | tr -d '\\r' > ~/.ssh/nexus-ec2.pem
+          printf '%s\n' "$EC2_SSH_KEY" | tr -d '\r' > ~/.ssh/nexus-ec2.pem
           chmod 600 ~/.ssh/nexus-ec2.pem
           ssh-keyscan -T 15 -H "$EC2_HOST" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
@@ -93,24 +93,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REMOTE="\${EC2_USER}@\${EC2_HOST}"
+          BACKEND="Proyecto_Springboot_Microservicios/proyecto"
+          cp "$BACKEND/docker/mysql/init.sql" deploy/mysql-init.sql
+          REMOTE="${EC2_USER}@${EC2_HOST}"
           SSH_OPTS=(-i "$HOME/.ssh/nexus-ec2.pem" -o BatchMode=yes -o StrictHostKeyChecking=yes)
-          ssh "\${SSH_OPTS[@]}" "$REMOTE" 'mkdir -p "$HOME/nexus"'
-          scp "\${SSH_OPTS[@]}" images.tar.gz deploy/compose.ec2.yaml "$REMOTE:nexus/"
+          ssh "${SSH_OPTS[@]}" "$REMOTE" 'mkdir -p "$HOME/nexus"'
+          scp "${SSH_OPTS[@]}" images.tar.gz deploy/compose.ec2.yaml deploy/mysql-init.sql "$REMOTE:nexus/"
 
       - name: Start NEXUS on EC2 and verify
         shell: bash
         run: |
           set -euo pipefail
-          REMOTE="\${EC2_USER}@\${EC2_HOST}"
+          REMOTE="${EC2_USER}@${EC2_HOST}"
           SSH_OPTS=(-i "$HOME/.ssh/nexus-ec2.pem" -o BatchMode=yes -o StrictHostKeyChecking=yes)
-          ssh "\${SSH_OPTS[@]}" "$REMOTE" 'bash -se' <<'REMOTE_SCRIPT'
+          ssh "${SSH_OPTS[@]}" "$REMOTE" 'bash -se' <<'REMOTE_SCRIPT'
           set -euo pipefail
           cd "$HOME/nexus"
 
           if [ ! -f .env ]; then
             umask 077
-            printf 'MYSQL_USERNAME=root\\nMYSQL_ROOT_PASSWORD=%s\\nJWT_SECRET=%s\\n' \\
+            printf 'MYSQL_USERNAME=root\nMYSQL_ROOT_PASSWORD=%s\nJWT_SECRET=%s\n' \
               "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
           fi
 
@@ -120,8 +122,8 @@ jobs:
           rm -f images.tar.gz
 
           for i in $(seq 1 72); do
-            if curl -fsS --max-time 5 http://127.0.0.1/ >/dev/null && \\
-               curl -fsS --max-time 5 http://127.0.0.1:8080/actuator/health | \\
+            if curl -fsS --max-time 5 http://127.0.0.1/ >/dev/null && \
+               curl -fsS --max-time 5 http://127.0.0.1:8080/actuator/health | \
                  grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"'; then
               echo 'NEXUS is healthy.'
               docker compose -f compose.ec2.yaml ps
@@ -138,4 +140,4 @@ jobs:
 
       - name: Show public URL
         if: success()
-        run: echo "NEXUS is available at http://\${EC2_HOST}/"
+        run: echo "NEXUS is available at http://${EC2_HOST}/"
