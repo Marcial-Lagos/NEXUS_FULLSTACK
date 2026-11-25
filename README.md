@@ -69,3 +69,9 @@ Para probar la instalación de Docker, ejecuta `node --env-file=.env scripts/pro
 La prueba de la tienda crea una cuenta, un producto y un pedido de prueba. Retira el producto al finalizar y conserva los comprobantes. Lee el acceso administrativo de la configuración nativa o de las variables `NEXUS_ADMIN_EMAIL` y `NEXUS_ADMIN_PASSWORD`. Puedes definir `NEXUS_URL` para otra instancia de pruebas.
 
 [Frontend React](./Nexus_React) · [Microservicios Spring Boot](./Proyecto_Springboot_Microservicios) · [Análisis inicial del proyecto](./ANALISIS_INTEGRACION.md)
+
+## Persistencia de chats
+
+El API Gateway usa JDBC con las variables SPRING_DATASOURCE_* y el esquema existente db_usuario. Al arrancar ejecuta schema.sql con CREATE TABLE IF NOT EXISTS para las tablas nexus_chat_directo y nexus_chat_mensaje. No modifica tablas comerciales existentes. En LGND el arranque local configura el Gateway con jdbc:mysql://127.0.0.1:33307/db_usuario; Docker Compose ya define el datasource. El historial de directos publicos y comunidades requiere JWT. Los chats guardan el ID de usuario autenticado, texto, canal y fecha; no guardan audio/video. Para produccion, separar permisos y esquema del chat, establecer moderacion, politica de retencion y backups, y probar TURN.
+
+Pruebas opcionales con MySQL real: desde api-gateway ejecutar mvn test con NEXUS_TEST_MYSQL_URL (URL base jdbc:mysql://host:puerto/), NEXUS_TEST_MYSQL_USER y NEXUS_TEST_MYSQL_PASSWORD definidos localmente. HistorialMySqlTest crea y elimina un esquema temporal de nombre aleatorio exclusivamente para las pruebas. No guardar credenciales en Git.

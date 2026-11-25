@@ -149,6 +149,7 @@ foreach ($m in $servicePorts.Keys) {
         $schema = if ($m -eq 'ms-auth') { 'db_usuario' } else { 'db_' + $m.Substring(3) }
         $env:SPRING_DATASOURCE_URL="jdbc:mysql://127.0.0.1:33307/$schema"
     }
+    if ($m -eq 'api-gateway') { $env:SPRING_DATASOURCE_URL='jdbc:mysql://127.0.0.1:33307/db_usuario' }
     if ($m -eq 'ms-auth') { $env:NEXUS_ADMIN_EMAIL=$cfg.adminEmail; $env:NEXUS_ADMIN_PASSWORD=$cfg.adminPassword }
     if ($m -eq 'ms-productos') { $env:NEXUS_CATALOGO_INICIAL='true' }
     Write-Host "Iniciando $m ($port)"
