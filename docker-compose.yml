@@ -6,7 +6,10 @@ include:
 services:
   frontend:
     restart: unless-stopped
-    build: ./Nexus_React
+    build:
+      context: ./Nexus_React
+      args:
+        VITE_ICE_SERVERS: '${VITE_ICE_SERVERS:-[]}'
     ports:
       - "127.0.0.1:5173:80"
     depends_on:
