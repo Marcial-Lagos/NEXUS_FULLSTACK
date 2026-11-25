@@ -1,5 +1,8 @@
 # Análisis de integración — Nexus Full Stack
 
+> Documento histórico de la auditoría inicial. La implementación y las instrucciones vigentes están en el [README del proyecto](./README.md).
+
+
 ## Alcance y método
 
 Auditoría estática de los repositorios clonados `Nexus_React` y `Proyecto_Springboot_Microservicios/proyecto`. Se inspeccionaron rutas y pantallas React, llamadas de red, controladores, DTO, servicios, repositorios, entidades, archivos Maven, configuración Spring, seguridad y Compose.
@@ -27,7 +30,7 @@ Esta primera etapa no modifica código de aplicación, no ejecuta pruebas ni ini
 
 ### Backend
 
-El agregador `Proyecto_Springboot_Microservicios/proyecto/pom.xml` incluye 12 módulos. Los módulos declaran Java 21, Spring Boot 4.0.6 y Spring Cloud 2025.1.1 en sus POM; los microservicios de negocio usan Springdoc 3.0.3.
+El agregador `Proyecto_Springboot_Microservicios/proyecto/pom.xml` incluye 12 módulos. Los módulos declaran Java 25 LTS, Spring Boot 4.0.6 y Spring Cloud 2025.1.1 en sus POM; los microservicios de negocio usan Springdoc 3.0.3.
 
 | Módulo | Puerto configurado en Compose/dev | Rol y dependencias principales |
 |---|---:|---|

@@ -1,2 +1,14 @@
+name: nexus-fullstack
 include:
   - path: ./Proyecto_Springboot_Microservicios/proyecto/docker-compose.yml
+    env_file: ./.env
+
+services:
+  frontend:
+    build: ./Nexus_React
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - foodexpress-net
