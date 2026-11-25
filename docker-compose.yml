@@ -5,6 +5,7 @@ include:
 
 services:
   frontend:
+    restart: unless-stopped
     build: ./Nexus_React
     ports:
       - "127.0.0.1:5173:80"
