@@ -1,0 +1,243 @@
+name: nexus
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    mem_limit: 2g
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: db_usuario
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [nexus-net]
+
+  eureka-server:
+    image: nexus-eureka-server:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SERVER_PORT: "8761"
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
+      EUREKA_CLIENT_FETCH_REGISTRY: "false"
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    ports: ["127.0.0.1:8761:8761"]
+    networks: [nexus-net]
+
+  api-gateway:
+    image: nexus-api-gateway:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: [eureka-server]
+    networks: [nexus-net]
+
+  ms-auth:
+    image: nexus-ms-auth:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_usuario
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRATION: "3600000"
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-usuarios:
+    image: nexus-ms-usuarios:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_usuarios
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-productos:
+    image: nexus-ms-productos:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_productos
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-pedidos:
+    image: nexus-ms-pedidos:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_pedidos
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-pagos:
+    image: nexus-ms-pagos:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_pagos
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-envios:
+    image: nexus-ms-envios:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_envios
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-inventario:
+    image: nexus-ms-inventario:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_inventario
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-notificaciones:
+    image: nexus-ms-notificaciones:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_notificaciones
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-resenas:
+    image: nexus-ms-resenas:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_resenas
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  ms-cupones:
+    image: nexus-ms-cupones:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/db_cupones
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      EUREKA_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-XX:InitialRAMPercentage=10.0 -XX:MaxRAMPercentage=65.0"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks: [nexus-net]
+
+  nexus-web:
+    image: nexus-frontend:latest
+    restart: unless-stopped
+    mem_limit: 256m
+    ports: ["80:80"]
+    depends_on: [api-gateway]
+    networks: [nexus-net]
+
+volumes:
+  mysql_data:
+
+networks:
+  nexus-net:
+    driver: bridge
